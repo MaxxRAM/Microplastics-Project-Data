@@ -1,0 +1,99 @@
+---
+title: "Maxx Micro Detour Analysis"
+author: "Maxximus Ramsaroop"
+date: "2024-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(radiant)
+library(mosaic)
+library(dplyr)
+```
+
+ORGANIZING DATA   
+```{r}
+f<- file.choose()
+d<- read_csv(f, col_names = T)
+attach(d)
+
+#eliminate all columns with unnecessary info
+s<- select(d, Species, Population, `Fish ID`, Sex, ReachesEndofAlley_sec, `EngageswithBarrier_sec(CorrForHR)`, `Direction of first turn`, `direction of turn to solve assay`, SolveTime_sec, TimewithSocialReward_sec)
+
+# Create separate dataframes for BFL and Buff Bayou populations & Male vs Female
+BFLpop<- filter(s, Population=="BFL")
+BFLM<- filter(BFLpop, Sex == "M")
+BFLF<- filter(BFLpop, Sex == "F")
+BuffBayoupop<- filter(s, Population== "Buff Bayou")
+BBM<- filter(BuffBayoupop, Sex == "M")
+BBF<- filter(BuffBayoupop, Sex == "F")
+
+#create a summary of all relevant stats for each population
+SSummary<- summarise(group_by(s, Population), avgREA= mean(ReachesEndofAlley_sec, na.rm=T), avgEWB= mean(`EngageswithBarrier_sec(CorrForHR)`, na.rm=T), avgST= mean(SolveTime_sec, na.rm=T), avgTWSR= mean(TimewithSocialReward_sec, na.rm = T))
+
+s$DoFTBinary <- as.numeric(s$`Direction of first turn` == "right")
+s$DoSABinary <- as.numeric(s$`direction of turn to solve assay` == "right")
+mean(s$DoFTBinary)
+mean(s$DoSABinary)
+```
+
+```{r}
+boxplot(SolveTime_sec ~ Population, data = s, xlab = "Population", ylab = "Solvetime")
+boxplot(SolveTime_sec ~ Sex, data = s, xlab = "Sex", ylab = "Solvetime")
+```
+
+t.test buff bayou against BFL in all metrics
+```{r}
+# Solve Time
+t.test(BuffBayoupop$SolveTime_sec, BFLpop$SolveTime_sec, alternative = "two.sided")
+
+# Reaches End of Alley
+t.test(BuffBayoupop$ReachesEndofAlley_sec, BFLpop$ReachesEndofAlley_sec , alternative = "two.sided")
+
+# Engages with Barrier
+t.test(BuffBayoupop$`EngageswithBarrier_sec(CorrForHR)` , BFLpop$`EngageswithBarrier_sec(CorrForHR)` , alternative = "two.sided")
+
+# Time with Social Reward
+t.test(BuffBayoupop$TimewithSocialReward_sec , BFLpop$TimewithSocialReward_sec , alternative = "two.sided")
+```
+
+Create a version of the dataframe where solvetime = 600 for all NAs
+```{r}
+alternatesolvetimeBB<- replace_na(BuffBayoupop$SolveTime_sec,600 )
+alternatesolvetimeBFL<- replace_na(BFLpop$SolveTime_sec,600 )
+t.test(alternatesolvetimeBB, alternatesolvetimeBFL, alternative = "two.sided")
+# The populaitons are significantly different from each other in solve time, if you include all fish (both those that did and did not complete detour) BUT populations are not significantly different from each other if you test only fish that completed the assay
+```
+
+Correlation between diff metrics of Detour within both populations
+```{r}
+# correlation between solvetime and other parameters
+cor.test(s$SolveTime_sec, s$TimewithSocialReward_sec)
+cor.test(alternatesolvetime, s$TimewithSocialReward_sec)
+#signifcant correlation between length of solve time and time spent w social reward in both cases
+# negative relationship between social reward time spent and solve time (makes sense!)
+plot(s$SolveTime_sec, s$TimewithSocialReward_sec)
+plot(alternatesolvetime, s$TimewithSocialReward_sec)
+model<- lm(alternatesolvetime ~ s$TimewithSocialReward_sec, data = s)
+abline(model, col = "red")
+
+
+cor.test(s$SolveTime_sec, s$ReachesEndofAlley_sec)
+cor.test(s$SolveTime_sec, s$`EngageswithBarrier_sec(CorrForHR)`)
+
+#correlation between time spent with social reward and other variables
+cor.test(s$TimewithSocialReward_sec, s$ReachesEndofAlley_sec)
+cor.test(s$TimewithSocialReward_sec, s$`EngageswithBarrier_sec(CorrForHR)`)
+
+#cor test between 
+
+
+```
+
+```{r}
+
+
+
+```
